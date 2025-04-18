@@ -1,23 +1,9 @@
 "use client";
 import React, { useState } from "react";
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import Column from "./components/Column";
 
 // Eisenhower matrix data (with emojis for matrix view)
-const initialEisenhowerData = [
+const eisenhowerData = [
   {
     title: "🔥 Urgent & Important (Immediate Deadlines)",
     tasks: [
@@ -67,61 +53,14 @@ const initialEisenhowerData = [
   },
 ];
 
-/**
- * Flatten and strip emojis for the combined list
- */
-function stripEmoji(task: string): string {
-  return task.replace(/^[^\w\d]+ /, "");
-}
-const allTasks: string[] = initialEisenhowerData.flatMap(col => col.tasks.map(stripEmoji));
+import { stripEmoji, shuffle } from "./utils/utils";
 
-/**
- * Fisher-Yates shuffle for random order
- */
-function shuffle(array: string[]): string[] {
-  const arr = [...array];
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
-// Sortable item component for dnd-kit
-function SortableItem({ id, children }: { id: string; children: React.ReactNode }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    cursor: "grab",
-  };
-  return (
-    <li
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className="bg-neutral-700 text-white rounded px-3 py-2 shadow-sm flex items-center"
-    >
-      {children}
-    </li>
-  );
-}
+const allTasks: string[] = eisenhowerData.flatMap(col => col.tasks.map(stripEmoji));
 
 export default function Home() {
   const [sorted, setSorted] = useState(false);
   const [animating, setAnimating] = useState(false);
   const [shuffledTasks, setShuffledTasks] = useState<string[] | null>(null);
-  const [eisenhowerData, setEisenhowerData] = useState(initialEisenhowerData);
-
-  // For sortable tasks in the first column
-  const [tasks0, setTasks0] = useState(initialEisenhowerData[0].tasks);
-
-  // DnD-kit sensors
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
-  );
 
   // Shuffle tasks only on client after mount
   React.useEffect(() => {
@@ -135,16 +74,6 @@ export default function Home() {
       setSorted(s => !s);
       setAnimating(false);
     }, 400); // Animation duration
-  };
-
-  // DnD-kit drag end handler for first column
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (active.id !== over?.id) {
-      const oldIndex = tasks0.indexOf(active.id as string);
-      const newIndex = tasks0.indexOf(over?.id as string);
-      setTasks0(arrayMove(tasks0, oldIndex, newIndex));
-    }
   };
 
   return (
@@ -185,45 +114,13 @@ export default function Home() {
           </div>
         ) : (
           <div className="grid grid-cols-4 gap-6 w-full max-w-7xl">
-            {/* First column with dnd-kit sortable */}
-            <div className="flex flex-col rounded-lg shadow-lg bg-neutral-800">
-              <div className="p-4 rounded-t-lg font-semibold text-lg text-center bg-red-600 text-white">
-                {initialEisenhowerData[0].title}
-              </div>
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext items={tasks0} strategy={verticalListSortingStrategy}>
-                  <ul className="flex-1 p-4 space-y-3">
-                    {tasks0.map((task) => (
-                      <SortableItem key={task} id={task}>
-                        {task}
-                      </SortableItem>
-                    ))}
-                  </ul>
-                </SortableContext>
-              </DndContext>
-            </div>
-            {/* Other columns static */}
-            {eisenhowerData.slice(1).map((col) => (
-              <div
+            {eisenhowerData.map((col) => (
+              <Column
                 key={col.title}
-                className="flex flex-col rounded-lg shadow-lg bg-neutral-800"
-              >
-                <div
-                  className={`p-4 rounded-t-lg font-semibold text-lg text-center ${col.headerClass}`}
-                >
-                  {col.title}
-                </div>
-                <ul className="flex-1 p-4 space-y-3">
-                  {col.tasks.map((task, i) => (
-                    <li
-                      key={i}
-                      className="bg-neutral-700 text-white rounded px-3 py-2 shadow-sm flex items-center"
-                    >
-                      {task}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                title={col.title}
+                tasks={col.tasks}
+                headerClass={col.headerClass}
+              />
             ))}
           </div>
         )}
