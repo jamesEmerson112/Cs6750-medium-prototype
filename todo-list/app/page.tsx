@@ -1,5 +1,7 @@
 "use client";
 import React, { useState } from "react";
+import Column from "./components/Column";
+import { stripEmoji, shuffle } from "./utils/utils";
 import {
   DndContext,
   closestCenter,
@@ -16,79 +18,12 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-// Eisenhower matrix data (with emojis for matrix view)
-const initialEisenhowerData = [
-  {
-    title: "🔥 Urgent & Important (Immediate Deadlines)",
-    tasks: [
-      "📊 Data Project MVP (Due TODAY) (highest urgency today)",
-      "📝 Report Meeting (Data Project) (tonight)",
-      "🧥 Order Ali’s Hoodie (must order ASAP)",
-      "🔬 Daily AR/AI Research (~30–45 mins, realistic today)",
-      "📅 Two quizzes (complete early next week)",
-      "🛡️ Security Beta Project (start soon, Apr 22)",
-      "📈 Data Presentation (Apr 26)",
-      "🤝 Team Project Check-in #4 (Apr 21)",
-    ],
-    headerClass: "bg-red-600 text-white",
-  },
-  {
-    title: "📅 Important, Not Urgent (Strategic Progress)",
-    tasks: [
-      "🏕️ Plan End-of-May Cabin Trip",
-      "🧑‍🤝‍🧑 Monthly Meetup Plans (Shelby/Baseball)",
-      "📌 Regular Job Spreadsheet Updates",
-      "💪 Short Daily Cardio/Core Exercise (~20–30 mins)",
-      "💻 Resume Leetcode after Hackathon (after Apr 20) (clearly paused)",
-      "🦷 Wisdom Teeth Appointment Scheduling",
-      "✈️ Hackathon (Travel Apr 19–20, fully blocked)",
-    ],
-    headerClass: "bg-purple-600 text-white",
-  },
-  {
-    title: "⚡ Urgent, Not Important (Quick Tasks)",
-    tasks: [
-      "💰 Deposit Cash (quick errand) (today)",
-      "🌱 Water Jesse’s Plants (daily quick)",
-      "🍽️ Ask Friends about May 1 Dinner (moved to tomorrow)",
-    ],
-    headerClass: "bg-yellow-400 text-gray-900",
-  },
-  {
-    title: "🌿 Not Urgent, Not Important",
-    tasks: [
-      "📖 Casual Reading",
-      "🎮 Casual Gaming/Relaxation",
-      "🕶️ $200 Ant Farm Visualization (motivation boost)",
-      "👗 Fashion Research (Reward)",
-      "🐝 Optional Social (if energy)",
-    ],
-    headerClass: "bg-green-600 text-white",
-  },
-];
+import { eisenhowerData } from "./data/eisenhowerData";
 
-/**
- * Flatten and strip emojis for the combined list
- */
-function stripEmoji(task: string): string {
-  return task.replace(/^[^\w\d]+ /, "");
-}
-const allTasks: string[] = initialEisenhowerData.flatMap(col => col.tasks.map(stripEmoji));
-
-/**
- * Fisher-Yates shuffle for random order
- */
-function shuffle(array: string[]): string[] {
-  const arr = [...array];
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
+const allTasks: string[] = eisenhowerData.flatMap(col => col.tasks.map(stripEmoji));
 
 // Sortable item component for dnd-kit
-function SortableItem({ id, children }: { id: string; children: React.ReactNode }) {
+function SortableTaskItem({ id, children }: { id: string; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -113,10 +48,9 @@ export default function Home() {
   const [sorted, setSorted] = useState(false);
   const [animating, setAnimating] = useState(false);
   const [shuffledTasks, setShuffledTasks] = useState<string[] | null>(null);
-  const [eisenhowerData, setEisenhowerData] = useState(initialEisenhowerData);
 
   // For sortable tasks in the first column
-  const [tasks0, setTasks0] = useState(initialEisenhowerData[0].tasks);
+  const [tasks0, setTasks0] = useState(eisenhowerData[0].tasks);
 
   // DnD-kit sensors
   const sensors = useSensors(
@@ -188,15 +122,15 @@ export default function Home() {
             {/* First column with dnd-kit sortable */}
             <div className="flex flex-col rounded-lg shadow-lg bg-neutral-800">
               <div className="p-4 rounded-t-lg font-semibold text-lg text-center bg-red-600 text-white">
-                {initialEisenhowerData[0].title}
+                {eisenhowerData[0].title}
               </div>
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={tasks0} strategy={verticalListSortingStrategy}>
                   <ul className="flex-1 p-4 space-y-3">
                     {tasks0.map((task) => (
-                      <SortableItem key={task} id={task}>
+                      <SortableTaskItem key={task} id={task}>
                         {task}
-                      </SortableItem>
+                      </SortableTaskItem>
                     ))}
                   </ul>
                 </SortableContext>
@@ -204,26 +138,12 @@ export default function Home() {
             </div>
             {/* Other columns static */}
             {eisenhowerData.slice(1).map((col) => (
-              <div
+              <Column
                 key={col.title}
-                className="flex flex-col rounded-lg shadow-lg bg-neutral-800"
-              >
-                <div
-                  className={`p-4 rounded-t-lg font-semibold text-lg text-center ${col.headerClass}`}
-                >
-                  {col.title}
-                </div>
-                <ul className="flex-1 p-4 space-y-3">
-                  {col.tasks.map((task, i) => (
-                    <li
-                      key={i}
-                      className="bg-neutral-700 text-white rounded px-3 py-2 shadow-sm flex items-center"
-                    >
-                      {task}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                title={col.title}
+                tasks={col.tasks}
+                headerClass={col.headerClass}
+              />
             ))}
           </div>
         )}
